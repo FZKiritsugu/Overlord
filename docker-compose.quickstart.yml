@@ -1,6 +1,6 @@
 services:
   overlord-server:
-    image: ghcr.io/pulsarv2/overlord:latest
+    image: ghcr.io/vxaboveground/overlord:latest
     container_name: overlord-server
     ports:
       - "5173:5173"

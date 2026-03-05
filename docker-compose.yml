@@ -1,6 +1,6 @@
 services:
   overlord-server:
-    image: ${DOCKER_IMAGE:-ghcr.io/pulsarv2/overlord:latest}
+    image: ${DOCKER_IMAGE:-ghcr.io/vxaboveground/overlord:latest}
     container_name: overlord-server
     ports:
       - "${PORT:-5173}:5173"
