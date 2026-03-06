@@ -34,6 +34,7 @@ export async function startBuildProcess(
   deps: BuildProcessDeps,
 ): Promise<void> {
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const BUILD_STREAM_HEARTBEAT_MS = 15_000;
   const now = Date.now();
 
   const build: BuildStream = {
@@ -68,6 +69,16 @@ export async function startBuildProcess(
       }
     });
   };
+
+  const buildStartedAt = Date.now();
+  const keepAliveTimer = setInterval(() => {
+    const elapsedMinutes = Math.floor((Date.now() - buildStartedAt) / 60_000);
+    sendToStream({
+      type: "heartbeat",
+      elapsedMinutes,
+      timestamp: Date.now(),
+    });
+  }, BUILD_STREAM_HEARTBEAT_MS);
 
   try {
     const serverConfig = getConfig();
@@ -293,5 +304,7 @@ export async function startBuildProcess(
       logger.info(`[build:${buildId.substring(0, 8)}] Cleaning up failed build stream`);
       buildManager.deleteBuildStream(buildId);
     }, 60 * 60 * 1000);
+  } finally {
+    clearInterval(keepAliveTimer);
   }
 }
