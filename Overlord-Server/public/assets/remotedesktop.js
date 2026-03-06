@@ -541,7 +541,6 @@ import { encodeMsgpack, decodeMsgpack } from "./msgpack-helpers.js";
     if (!prefersH264) return;
     const reasonText = normalizeFallbackReason(reason);
     prefersH264 = false;
-    h264LowFpsStreak = 0;
     destroyVideoDecoder();
     if (codecH264) codecH264.checked = false;
     localStorage.setItem(codecPrefKey, "0");
@@ -559,8 +558,11 @@ import { encodeMsgpack, decodeMsgpack } from "./msgpack-helpers.js";
   }
 
   function tryRecoverH264Stream(reason = "h264_decode_error") {
-    if (selectedCodec !== "h264") return false;
-    if (!isStreaming || !currentClientId || !ws || ws.readyState !== WebSocket.OPEN) return false;
+    if (!prefersH264 || !activeClientId) return false;
+    if (streamState !== "streaming" && streamState !== "stalled" && streamState !== "starting") {
+      return false;
+    }
+    if (ws.readyState !== WebSocket.OPEN) return false;
     const now = Date.now();
     if (h264RecoveryAttempts >= H264_MAX_RECOVERY_ATTEMPTS) return false;
     if (now - h264LastRecoveryAt < H264_RECOVERY_COOLDOWN_MS) return false;
@@ -569,49 +571,32 @@ import { encodeMsgpack, decodeMsgpack } from "./msgpack-helpers.js";
     h264LastRecoveryAt = now;
     h264KeyframeErrorStreak = 0;
 
-    log("warn", "H264 decode stuck waiting for keyframe. Auto-restarting stream once.", {
+    console.warn("rd: h264 decode stuck waiting for keyframe; auto-restarting stream once", {
       reason,
       attempt: h264RecoveryAttempts
     });
 
-    try {
-      ws.send(JSON.stringify({
-        type: "desktop_stop",
-        clientId: currentClientId,
-        mode: "rdp",
-        quality: "high",
-        codec: "h264",
-        source: "rd_viewer",
-        reason: "h264_recovery_stop"
-      }));
-    } catch {}
+    sendCmd("desktop_stop", {
+      source: "rd_viewer",
+      reason: "h264_recovery_stop",
+    });
 
     setTimeout(() => {
-      if (!isStreaming || selectedCodec !== "h264" || !currentClientId || !ws || ws.readyState !== WebSocket.OPEN) {
+      if (!prefersH264 || !activeClientId || ws.readyState !== WebSocket.OPEN) {
         return;
       }
       resetH264RuntimeState();
-      try {
-        ws.send(JSON.stringify({
-          type: "desktop_start",
-          clientId: currentClientId,
-          mode: "rdp",
-          quality: "high",
-          codec: "h264",
-          source: "rd_viewer",
-          reason: "h264_recovery_restart"
-        }));
-      } catch {}
-      try {
-        ws.send(JSON.stringify({
-          type: "desktop_set_quality",
-          clientId: currentClientId,
-          quality: "high",
-          codec: "h264",
-          source: "rd_viewer",
-          reason: "h264_recovery_quality_push"
-        }));
-      } catch {}
+      sendCmd("desktop_start", {
+        source: "rd_viewer",
+        reason: "h264_recovery_restart",
+      });
+      const q = Number(qualitySlider?.value) || 90;
+      sendCmd("desktop_set_quality", {
+        quality: q,
+        codec: "h264",
+        source: "rd_viewer",
+        reason: "h264_recovery_quality_push",
+      });
     }, 450);
 
     return true;
