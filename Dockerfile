@@ -14,6 +14,7 @@ RUN apt-get update \
        ca-certificates \
        wget \
        git \
+       unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Go (latest stable version)
@@ -38,6 +39,19 @@ ENV GOMODCACHE=/go/pkg/mod
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     go install mvdan.cc/garble@latest
+
+# Install Android NDK for Android cross-compilation
+ENV ANDROID_NDK_VERSION=r27c
+ENV ANDROID_NDK_HOME=/opt/android-ndk
+RUN case "${TARGETARCH}" in \
+        amd64) NDK_HOST="linux-x86_64" ;; \
+        arm64) NDK_HOST="linux-aarch64" ;; \
+        *) echo "Unsupported architecture for Android NDK: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && wget -q "https://dl.google.com/android/repository/android-ndk-${ANDROID_NDK_VERSION}-linux.zip" \
+    && unzip -q android-ndk-${ANDROID_NDK_VERSION}-linux.zip \
+    && mv android-ndk-${ANDROID_NDK_VERSION} ${ANDROID_NDK_HOME} \
+    && rm android-ndk-${ANDROID_NDK_VERSION}-linux.zip
 
 # Copy package files and lockfile
 COPY Overlord-Server/package.json Overlord-Server/bun.lock* ./

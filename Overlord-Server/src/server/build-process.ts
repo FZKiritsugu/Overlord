@@ -44,6 +44,13 @@ function resolveClientBuildCacheRoot(): string {
   return path.resolve(ensureDataDir(), "client-build-cache");
 }
 
+function resolveAndroidNdkToolchainBin(): string | null {
+  const ndkHome = (process.env.ANDROID_NDK_HOME || "/opt/android-ndk").trim();
+  const hostArch = process.arch === "arm64" ? "linux-aarch64" : "linux-x86_64";
+  const toolchainBin = path.join(ndkHome, "toolchains", "llvm", "prebuilt", hostArch, "bin");
+  return fs.existsSync(toolchainBin) ? toolchainBin : null;
+}
+
 type BuildProcessConfig = {
   platforms: string[];
   serverUrl?: string;
@@ -160,6 +167,15 @@ export async function startBuildProcess(
       throw new Error("One or more requested platforms are not allowed");
     }
 
+    const ndkBin = resolveAndroidNdkToolchainBin();
+    if (!ndkBin && platformsToBuild.some((p) => p.startsWith("android-"))) {
+      sendToStream({
+        type: "output",
+        text: "Warning: Android NDK not found. Android builds require the NDK. Install it to /opt/android-ndk or set the ANDROID_NDK_HOME environment variable.\n",
+        level: "warn",
+      });
+    }
+
     let buildMutex = "";
     if (!config.disableMutex) {
       buildMutex = config.mutex || deps.generateBuildMutex();
@@ -196,11 +212,21 @@ export async function startBuildProcess(
           "linux/amd64": "gcc",
           "windows/amd64": "x86_64-w64-mingw32-gcc",
           "windows/386": "i686-w64-mingw32-gcc",
+          ...(ndkBin ? {
+            "android/amd64": path.join(ndkBin, "x86_64-linux-android21-clang"),
+            "android/arm64": path.join(ndkBin, "aarch64-linux-android21-clang"),
+            "android/arm/v7": path.join(ndkBin, "armv7a-linux-androideabi21-clang"),
+          } : {}),
         };
         const cxxCompilerByTarget: Record<string, string> = {
           "linux/amd64": "g++",
           "windows/amd64": "x86_64-w64-mingw32-g++",
           "windows/386": "i686-w64-mingw32-g++",
+          ...(ndkBin ? {
+            "android/amd64": path.join(ndkBin, "x86_64-linux-android21-clang++"),
+            "android/arm64": path.join(ndkBin, "aarch64-linux-android21-clang++"),
+            "android/arm/v7": path.join(ndkBin, "armv7a-linux-androideabi21-clang++"),
+          } : {}),
         };
 
         const cc = cCompilerByTarget[targetKey];
@@ -217,6 +243,9 @@ export async function startBuildProcess(
         }
         if (cxx) {
           env.CXX = cxx;
+        }
+        if (os === "android" && ndkBin) {
+          env.AR = path.join(ndkBin, "llvm-ar");
         }
       }
 
