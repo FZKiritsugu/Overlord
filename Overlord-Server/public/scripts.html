@@ -189,7 +189,7 @@
                 data-type="powershell"
                 data-script="Get-ComputerInfo | Select-Object CsName, WindowsVersion, OsArchitecture, CsProcessors"
               >
-                <div class="font-semibold">System Info</div>
+                <div class="font-semibold">[Windows] System Info</div>
                 <div class="text-sm text-slate-400">
                   Get computer information
                 </div>
@@ -199,7 +199,7 @@
                 data-type="powershell"
                 data-script="Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 Name, CPU, WorkingSet"
               >
-                <div class="font-semibold">Top Processes</div>
+                <div class="font-semibold">[Windows] Top Processes</div>
                 <div class="text-sm text-slate-400">
                   Show top 10 processes by CPU
                 </div>
@@ -209,9 +209,39 @@
                 data-type="powershell"
                 data-script="Get-NetIPAddress | Where-Object {$_.AddressFamily -eq 'IPv4'} | Select-Object IPAddress, InterfaceAlias"
               >
-                <div class="font-semibold">Network Info</div>
+                <div class="font-semibold">[Windows] Network Info</div>
                 <div class="text-sm text-slate-400">
                   List network adapters and IPs
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="$av = Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct -ErrorAction SilentlyContinue; if ($av) { $av | Select-Object displayName, pathToSignedProductExe, timestamp } else { Write-Output 'No AV product data returned from SecurityCenter2' }"
+              >
+                <div class="font-semibold">[Windows] AV Status Check</div>
+                <div class="text-sm text-slate-400">
+                  Query registered antivirus products
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-MpComputerStatus | Select-Object AMServiceEnabled, AntivirusEnabled, RealTimeProtectionEnabled, AntivirusSignatureLastUpdated"
+              >
+                <div class="font-semibold">[Windows] Defender Health</div>
+                <div class="text-sm text-slate-400">
+                  Show Microsoft Defender status
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-Service | Where-Object {$_.Status -eq 'Running'} | Sort-Object DisplayName | Select-Object -First 30 Name, DisplayName, Status"
+              >
+                <div class="font-semibold">[Windows] Running Services</div>
+                <div class="text-sm text-slate-400">
+                  List active Windows services
                 </div>
               </button>
               <button
@@ -219,9 +249,9 @@
                 data-type="bash"
                 data-script="df -h"
               >
-                <div class="font-semibold">Disk Usage</div>
+                <div class="font-semibold">[Linux/macOS] Disk Usage</div>
                 <div class="text-sm text-slate-400">
-                  Show disk space (Linux)
+                  Show mounted filesystem usage
                 </div>
               </button>
               <button
@@ -229,9 +259,190 @@
                 data-type="bash"
                 data-script="top -bn1 | head -20"
               >
-                <div class="font-semibold">System Status</div>
+                <div class="font-semibold">[Linux] System Status</div>
                 <div class="text-sm text-slate-400">
                   Show system status (Linux)
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="uname -a; echo; lsb_release -a 2>/dev/null || cat /etc/os-release"
+              >
+                <div class="font-semibold">[Linux] OS + Kernel Info</div>
+                <div class="text-sm text-slate-400">
+                  Show distro and kernel details
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="ps aux --sort=-%cpu | head -15"
+              >
+                <div class="font-semibold">[Linux/macOS] Top Processes</div>
+                <div class="text-sm text-slate-400">
+                  Show top CPU-consuming processes
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="ip addr 2>/dev/null || ifconfig"
+              >
+                <div class="font-semibold">[Linux/macOS] Network Interfaces</div>
+                <div class="text-sm text-slate-400">
+                  List interfaces and assigned IPs
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="systemctl --failed 2>/dev/null || service --status-all 2>/dev/null"
+              >
+                <div class="font-semibold">[Linux] Failed Services</div>
+                <div class="text-sm text-slate-400">
+                  Show failing services if available
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="sw_vers; echo; system_profiler SPSoftwareDataType 2>/dev/null | head -40"
+              >
+                <div class="font-semibold">[macOS] System Info</div>
+                <div class="text-sm text-slate-400">
+                  Show macOS version and software details
+                </div>
+              </button>
+              <div class="pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500 border-t border-slate-700 mt-2">Red Team</div>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="whoami /all"
+              >
+                <div class="font-semibold">[Windows RT] Whoami + Privileges</div>
+                <div class="text-sm text-slate-400">
+                  Current user identity, groups and token privileges
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-LocalUser | Select-Object Name,Enabled,LastLogon | Format-Table -AutoSize; Write-Host '--- Local Admins ---'; Get-LocalGroupMember -Group Administrators | Select-Object Name,ObjectClass,PrincipalSource"
+              >
+                <div class="font-semibold">[Windows RT] Local Users &amp; Admins</div>
+                <div class="text-sm text-slate-400">
+                  Enumerate local accounts and administrator group members
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="$p = Get-MpPreference; 'Exclusion Paths:'; $p.ExclusionPath; ''; 'Exclusion Processes:'; $p.ExclusionProcess; ''; 'Exclusion Extensions:'; $p.ExclusionExtension"
+              >
+                <div class="font-semibold">[Windows RT] Defender Exclusions</div>
+                <div class="text-sm text-slate-400">
+                  Show Defender exclusion paths, processes and extensions
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Write-Host 'Language Mode:' $ExecutionContext.SessionState.LanguageMode; Write-Host 'Script Block Logging:' (Get-ItemProperty 'HKLM:\Software\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging' -ErrorAction SilentlyContinue).EnableScriptBlockLogging"
+              >
+                <div class="font-semibold">[Windows RT] PS Language Mode</div>
+                <div class="text-sm text-slate-400">
+                  Check PowerShell CLM and script block logging policy
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="cmdkey /list"
+              >
+                <div class="font-semibold">[Windows RT] Credential Manager</div>
+                <div class="text-sm text-slate-400">
+                  List stored Windows credential manager entries
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-Content (Get-PSReadLineOption).HistorySavePath -ErrorAction SilentlyContinue | Select-Object -Last 50"
+              >
+                <div class="font-semibold">[Windows RT] PS Command History</div>
+                <div class="text-sm text-slate-400">
+                  Show last 50 PowerShell history entries from PSReadLine
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-ScheduledTask | Where-Object {$_.TaskPath -notlike '\Microsoft*'} | Select-Object TaskName,TaskPath,State | Format-Table -AutoSize"
+              >
+                <div class="font-semibold">[Windows RT] Scheduled Tasks (Non-MS)</div>
+                <div class="text-sm text-slate-400">
+                  List non-Microsoft scheduled tasks (persistence / privesc)
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="powershell"
+                data-script="Get-WmiObject Win32_Service | Where-Object {$_.PathName -like '* *' -and -not $_.PathName.StartsWith([char]34)} | Select-Object Name,PathName,State | Format-List"
+              >
+                <div class="font-semibold">[Windows RT] Unquoted Service Paths</div>
+                <div class="text-sm text-slate-400">
+                  Find services with unquoted paths (privilege escalation vector)
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="find / -perm -4000 -type f 2>/dev/null | sort"
+              >
+                <div class="font-semibold">[Linux RT] SUID Binaries</div>
+                <div class="text-sm text-slate-400">
+                  Find SUID binaries (potential privilege escalation)
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="sudo -l 2>/dev/null || echo 'No sudo access or sudo not available'"
+              >
+                <div class="font-semibold">[Linux/macOS RT] Sudo Rules</div>
+                <div class="text-sm text-slate-400">
+                  Show sudo permissions for the current user
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="getcap -r / 2>/dev/null || echo 'getcap not available'"
+              >
+                <div class="font-semibold">[Linux RT] Capabilities</div>
+                <div class="text-sm text-slate-400">
+                  Find binaries with elevated Linux capabilities
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="find /home /root /Users -maxdepth 4 \( -name 'id_rsa' -o -name 'id_ed25519' -o -name 'id_ecdsa' -o -name 'authorized_keys' \) 2>/dev/null"
+              >
+                <div class="font-semibold">[Linux/macOS RT] SSH Keys Hunt</div>
+                <div class="text-sm text-slate-400">
+                  Locate SSH private keys and authorized_keys files
+                </div>
+              </button>
+              <button
+                class="template-btn w-full text-left px-4 py-3 rounded-lg border border-slate-700 bg-slate-800/50 hover:bg-slate-700 transition-colors"
+                data-type="bash"
+                data-script="echo '=== /etc/crontab ==='; cat /etc/crontab 2>/dev/null; echo '=== /etc/cron.d ==='; ls /etc/cron.d/ 2>/dev/null && cat /etc/cron.d/* 2>/dev/null; echo '=== User Crontabs ==='; ls /var/spool/cron/crontabs/ 2>/dev/null"
+              >
+                <div class="font-semibold">[Linux RT] Cron Jobs</div>
+                <div class="text-sm text-slate-400">
+                  Enumerate system-wide and user cron jobs
                 </div>
               </button>
             </div>
