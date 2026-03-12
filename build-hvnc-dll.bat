@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 REM Build HVNCInjection DLL for Windows x64 using Visual Studio (cl.exe)
 REM Run from VS Developer Command Prompt, or let the script detect vcvarsall.
 
@@ -21,8 +21,8 @@ if %ERRORLEVEL% neq 0 (
         echo Please run this from a VS Developer Command Prompt.
         exit /b 1
     )
-    echo Found VS at: %VS_PATH%
-    call "%VS_PATH%\VC\Auxiliary\Build\vcvarsall.bat" x64
+    echo Found VS at: !VS_PATH!
+    call "!VS_PATH!\VC\Auxiliary\Build\vcvarsall.bat" x64
 )
 
 if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
