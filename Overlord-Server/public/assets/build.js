@@ -75,6 +75,18 @@ if (rawServerListCheckbox && serverUrlInput) {
   });
 }
 
+const persistenceCheckbox = document.querySelector('input[name="enable-persistence"]');
+const persistenceMethodContainer = document.getElementById("persistence-method-container");
+if (persistenceCheckbox && persistenceMethodContainer) {
+  persistenceCheckbox.addEventListener("change", () => {
+    if (persistenceCheckbox.checked) {
+      persistenceMethodContainer.classList.remove("hidden");
+    } else {
+      persistenceMethodContainer.classList.add("hidden");
+    }
+  });
+}
+
 async function init() {
   try {
     updateServerUrlPlaceholder();
@@ -191,6 +203,7 @@ form?.addEventListener("submit", async (e) => {
   const enablePersistence = form.querySelector(
     'input[name="enable-persistence"]',
   ).checked;
+  const persistenceMethod = form.querySelector('#persistence-method')?.value || 'startup';
   const hideConsole = form.querySelector(
     'input[name="hide-console"]',
   ).checked;
@@ -208,6 +221,7 @@ form?.addEventListener("submit", async (e) => {
     disableCgo,
     obfuscate,
     enablePersistence,
+    persistenceMethod: enablePersistence ? persistenceMethod : undefined,
     hideConsole,
     noPrinting,
   };

@@ -322,6 +322,30 @@
                       >
                     </div>
                   </label>
+                  <!-- Persistence method selector – Windows only, shown when persistence is enabled -->
+                  <div
+                    id="persistence-method-container"
+                    class="hidden pl-3 border-l-2 border-orange-500/40"
+                  >
+                    <label
+                      class="block text-xs font-medium text-slate-400 mb-1"
+                      for="persistence-method"
+                      >Windows Persistence Method</label
+                    >
+                    <select
+                      id="persistence-method"
+                      name="persistence-method"
+                      class="w-full px-3 py-2 bg-slate-800/80 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-orange-500 transition-colors"
+                    >
+                      <option value="startup">Startup Folder (APPDATA)</option>
+                      <option value="registry">Registry (HKCU Run key)</option>
+                      <option value="taskscheduler">Task Scheduler (ONLOGON, requires admin)</option>
+                      <option value="wmi">WMI Subscription (requires admin)</option>
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">
+                      Method used on Windows; other platforms use their native mechanism
+                    </p>
+                  </div>
                   <label
                     class="flex items-center gap-2 p-3 bg-slate-800/60 border border-slate-700 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors"
                     title="Windows only: build without a console window"

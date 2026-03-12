@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 )
 
+var DefaultPersistenceMethod = "startup"
+
 func Setup() error {
 	exePath, err := os.Executable()
 	if err != nil {

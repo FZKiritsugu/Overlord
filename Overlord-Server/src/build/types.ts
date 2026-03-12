@@ -18,6 +18,7 @@ export type BuildConfig = {
   disableCgo?: boolean;
   obfuscate?: boolean;
   enablePersistence?: boolean;
+  persistenceMethod?: string;
   hideConsole?: boolean;
   noPrinting?: boolean;
 };
