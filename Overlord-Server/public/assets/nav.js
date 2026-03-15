@@ -20,6 +20,7 @@ if (host) {
     "/metrics": "metrics-link",
     "/logs": "logs-link",
     "/scripts": "scripts-link",
+    "/socks5-manager": "socks5-link",
     "/plugins": "plugins-link",
     "/build": "build-link",
     "/users": "users-link",

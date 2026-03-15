@@ -6,6 +6,11 @@ import { metrics } from "../../metrics";
 import { requirePermission } from "../../rbac";
 import { getUserTelegramChatId, setUserTelegramChatId } from "../../users";
 import { runCertbotSetup } from "../certbot-setup";
+import {
+  getActiveProxies,
+  startProxy,
+  stopProxy,
+} from "../socks5-proxy-manager";
 
 type MiscRouteDeps = {
   CORS_HEADERS: Record<string, string>;
@@ -316,6 +321,71 @@ export async function handleMiscRoutes(
     });
 
     return Response.json(result, { headers: deps.CORS_HEADERS });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/proxy/list") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    if (user.role === "viewer") {
+      return new Response("Forbidden", { status: 403 });
+    }
+    return Response.json({ proxies: getActiveProxies() }, { headers: deps.CORS_HEADERS });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/proxy/start") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    if (user.role === "viewer") {
+      return new Response("Forbidden", { status: 403 });
+    }
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
+    }
+    const clientId = typeof body?.clientId === "string" ? body.clientId.trim() : "";
+    const port = typeof body?.port === "number" ? Math.floor(body.port) : 0;
+    if (!clientId) {
+      return Response.json({ ok: false, message: "clientId is required" }, { status: 400 });
+    }
+    if (port < 1 || port > 65535) {
+      return Response.json({ ok: false, message: "port must be 1-65535" }, { status: 400 });
+    }
+    const result = startProxy(clientId, port);
+    return Response.json(result, {
+      status: result.ok ? 200 : 400,
+      headers: deps.CORS_HEADERS,
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/proxy/stop") {
+    const user = await authenticateRequest(req);
+    if (!user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    if (user.role === "viewer") {
+      return new Response("Forbidden", { status: 403 });
+    }
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      return Response.json({ ok: false, message: "Invalid JSON" }, { status: 400 });
+    }
+    const port = typeof body?.port === "number" ? Math.floor(body.port) : 0;
+    if (port < 1 || port > 65535) {
+      return Response.json({ ok: false, message: "port must be 1-65535" }, { status: 400 });
+    }
+    const result = stopProxy(port);
+    return Response.json(result, {
+      status: result.ok ? 200 : 400,
+      headers: deps.CORS_HEADERS,
+    });
   }
 
   return null;

@@ -10,7 +10,6 @@ export type SocketRole =
   | "process_viewer"
   | "notifications_viewer"
   | "keylogger_viewer"
-  | "proxy_viewer"
   | "voice_viewer";
 
 export type SocketData = {

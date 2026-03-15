@@ -48,6 +48,12 @@ export function mountNav(host) {
           ><i class="fa-solid fa-code text-cyan-400"></i> Scripts</a
         >
         <a
+          href="/socks5-manager"
+          id="socks5-link"
+          class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:bg-slate-800 text-slate-300 transition-colors"
+          ><i class="fa-solid fa-network-wired text-sky-400"></i> Proxies</a
+        >
+        <a
           href="/plugins"
           id="plugins-link"
           class="hidden inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-800 hover:bg-slate-800 text-slate-300 transition-colors"

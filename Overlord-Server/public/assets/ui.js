@@ -30,7 +30,6 @@ const MENU_GROUPS = [
     color: "text-blue-400",
     items: [
       { label: "File Browser", icon: "fa-solid fa-folder-tree",   icolor: "text-blue-400", open: "files" },
-      { label: "SOCKS5 Proxy", icon: "fa-solid fa-network-wired", icolor: "text-sky-400",  open: "proxy" },
       { label: "Execution",    icon: "fa-solid fa-rocket",         icolor: "text-cyan-400", open: "silent-exec", id: "menu-silent-exec", hidden: true },
     ],
   },

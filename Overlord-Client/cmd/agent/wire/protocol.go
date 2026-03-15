@@ -208,3 +208,14 @@ type HVNCCloneProgress struct {
 	TotalBytes  int64  `msgpack:"totalBytes"`
 	Status      string `msgpack:"status"`
 }
+
+type ProxyData struct {
+	Type         string `msgpack:"type"`
+	ConnectionID string `msgpack:"connectionId"`
+	Data         []byte `msgpack:"data"`
+}
+
+type ProxyClose struct {
+	Type         string `msgpack:"type"`
+	ConnectionID string `msgpack:"connectionId"`
+}

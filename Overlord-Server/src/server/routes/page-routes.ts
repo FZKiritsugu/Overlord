@@ -381,22 +381,19 @@ export async function handlePageRoutes(
     }
   }
 
-  const proxyPageMatch = url.pathname.match(/^\/(.+)\/proxy$/);
-  if (req.method === "GET" && proxyPageMatch) {
+  if (req.method === "GET" && url.pathname === "/socks5-manager") {
     const user = await authenticateRequest(req);
     if (!user) {
       return serveLoginOrUnauthorized(deps);
     }
-
     if (user.role === "viewer") {
       return new Response("Forbidden: Viewers cannot access interactive features", { status: 403 });
     }
-    if (!canAccessClientPage(user.userId, user.role, proxyPageMatch[1])) {
-      return new Response("Forbidden: Client access denied", { status: 403 });
-    }
-    const file = Bun.file(`${deps.PUBLIC_ROOT}/proxy.html`);
+    const maybeChange = await serveChangePasswordIfRequired(deps, user.userId);
+    if (maybeChange) return maybeChange;
+    const file = Bun.file(`${deps.PUBLIC_ROOT}/socks5-manager.html`);
     if (await file.exists()) {
-      return new Response(file, { headers: deps.secureHeaders(deps.mimeType("proxy.html")) });
+      return new Response(file, { headers: deps.secureHeaders(deps.mimeType("socks5-manager.html")) });
     }
   }
 

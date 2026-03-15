@@ -123,6 +123,8 @@ func resetForReconnect(env *runtime.Env) {
 
 	stopVoiceSession()
 
+	CleanupAllTunnels()
+
 	env.NotificationMu.Lock()
 	env.NotificationKeywords = nil
 	env.NotificationMinIntervalMs = 0
@@ -1755,11 +1757,14 @@ func HandleCommand(ctx context.Context, env *runtime.Env, envelope map[string]in
 		res := wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: true}
 		_ = wire.WriteMsg(ctx, env.Conn, res)
 		return ErrReconnect
-	case "proxy_start":
+	case "proxy_connect":
 		payload, _ := envelope["payload"].(map[string]interface{})
-		return HandleProxyStart(ctx, env, cmdID, payload)
-	case "proxy_stop":
-		return HandleProxyStop(ctx, env, cmdID)
+		return HandleProxyConnect(ctx, env, cmdID, payload)
+	case "proxy_data":
+		payload, _ := envelope["payload"].(map[string]interface{})
+		return HandleProxyData(ctx, env, cmdID, payload)
+	case "proxy_close":
+		return HandleProxyClose(ctx, env, cmdID)
 	default:
 		log.Printf("command: unknown action=%s", action)
 		res := wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: false, Message: "unknown command"}

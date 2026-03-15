@@ -776,11 +776,6 @@ menu.addEventListener("click", async (e) => {
     closeMenu(clearContext);
     return;
   }
-  if (open === "proxy") {
-    window.open(`/${contextCard}/proxy`, "_blank", "noopener");
-    closeMenu(clearContext);
-    return;
-  }
   if (open === "silent-exec") {
     window.open(`/deploy?clientId=${contextCard}`, "_blank", "noopener");
     closeMenu(clearContext);

