@@ -27,8 +27,8 @@ static int so_dlclose(void* h) {
 // Go callback bridge — forward-declared here, implemented via //export below.
 extern void goPluginHostCallback(
 	uintptr_t ctx,
-	const char* event, int eventLen,
-	const char* payload, int payloadLen);
+	char* event, int eventLen,
+	char* payload, int payloadLen);
 
 // Call the plugin's PluginOnLoad, injecting our callback bridge + context.
 static int so_call_onload(void* fn, const char* info, int infoLen, uintptr_t ctx) {
