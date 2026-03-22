@@ -1,6 +1,6 @@
 {
   "name": "overlord-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Overlord Desktop Client - Fat client for the Overlord server",
   "author": "K fucking Dot",
   "main": "src/main.js",
