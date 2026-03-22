@@ -10,7 +10,8 @@ function setStatus(msg, type = "info") {
   statusEl.innerHTML = msg;
 }
 
-// Load saved connection on startup
+// Load saved connection on startup and surface any pending error from a
+// previous session (e.g. the server dropped mid-session and we bounced back).
 (async () => {
   try {
     const saved = await window.overlord.getSavedConnection();
@@ -21,6 +22,13 @@ function setStatus(msg, type = "info") {
     }
   } catch {
     // first run, no saved data
+  }
+
+  try {
+    const err = await window.overlord.getPendingError();
+    if (err) setStatus(err, "error");
+  } catch {
+    // ignore
   }
 })();
 

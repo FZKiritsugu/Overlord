@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const https = require("https");
+const http = require("http");
 
 // ── Persistence ──────────────────────────────────────────────
 app.setAppUserModelId("com.overlord.desktop");
@@ -34,6 +36,24 @@ function saveConnection(conn) {
 // ── Window ───────────────────────────────────────────────────
 let win;
 let serverBaseUrl = null; // e.g. "https://1.2.3.4:5173"
+let pendingError = null;  // error message to show on the connect page after a failed load
+
+// ── Server probe ─────────────────────────────────────────────
+// Checks whether a server is reachable before telling Electron to navigate to it.
+function probeServer(url) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith("https") ? https : http;
+    const req = mod.get(url, { rejectUnauthorized: false, timeout: 8000 }, (res) => {
+      res.resume(); // drain so the socket can be reused
+      resolve();
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("timeout"));
+    });
+    req.on("error", reject);
+  });
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -52,6 +72,21 @@ function createWindow() {
 
   // Allow self-signed certs on the target Overlord server
   win.webContents.session.setCertificateVerifyProc((_req, cb) => cb(0));
+
+  // If the server URL fails to load mid-session (e.g. server stopped), bounce back
+  // to the connect screen with a helpful error instead of showing a white page.
+  win.webContents.on("did-fail-load", (_event, errorCode, _errorDescription, validatedURL) => {
+    // ERR_ABORTED (-3) fires on normal navigation cancellations – ignore it.
+    if (errorCode === -3) return;
+    if (serverBaseUrl && validatedURL && validatedURL.startsWith(serverBaseUrl)) {
+      pendingError =
+        "Lost connection to the Overlord server. " +
+        "Make sure the server is still running, then try connecting again. " +
+        "See the README if you need help starting the server.";
+      serverBaseUrl = null;
+      win.loadFile(path.join(__dirname, "connect", "index.html"));
+    }
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -69,7 +104,13 @@ ipcMain.handle("get-saved-connection", () => {
   return loadSavedConnection();
 });
 
-ipcMain.handle("connect-to-server", (_event, { host, port, useTLS }) => {
+ipcMain.handle("get-pending-error", () => {
+  const err = pendingError;
+  pendingError = null;
+  return err;
+});
+
+ipcMain.handle("connect-to-server", async (_event, { host, port, useTLS }) => {
   if (!host || host.trim().length === 0) {
     return { success: false, error: "Host is required" };
   }
@@ -79,6 +120,19 @@ ipcMain.handle("connect-to-server", (_event, { host, port, useTLS }) => {
 
   const protocol = useTLS ? "https" : "http";
   const url = `${protocol}://${host.trim()}:${port}`;
+
+  // Probe the server before navigating so we never end up on a white screen.
+  try {
+    await probeServer(url);
+  } catch {
+    return {
+      success: false,
+      error:
+        "Cannot reach the Overlord server at that address. " +
+        "Make sure the server is running before connecting — " +
+        "see the README for setup instructions.",
+    };
+  }
 
   saveConnection({ host: host.trim(), port, useTLS });
   serverBaseUrl = url;

@@ -54,7 +54,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create Overlord-Desktop-v${{ env.VERSION }} "dist/Overlord Setup.exe" \
+          gh release create Overlord-Desktop-v${{ env.VERSION }} "dist/Overlord Setup.exe" "PLEASE_READ.txt" \
             -t "Overlord Desktop v${{ env.VERSION }}" \
             -n "Automated build release for Overlord Desktop v${{ env.VERSION }}" \
             --draft=false \
