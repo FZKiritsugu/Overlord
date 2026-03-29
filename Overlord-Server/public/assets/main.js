@@ -810,6 +810,11 @@ menu.addEventListener("click", async (e) => {
     closeMenu(clearContext);
     return;
   }
+  if (open === "winre") {
+    window.open(`/winre?clientId=${contextCard}`, "_blank", "noopener");
+    closeMenu(clearContext);
+    return;
+  }
   const action = target.dataset.action;
 
   if (open === "voice") {

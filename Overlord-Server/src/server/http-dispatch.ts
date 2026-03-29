@@ -23,6 +23,7 @@ type HttpDispatchDeps<
   TNotificationsConfig,
   TBuild,
   TDeploy,
+  TWinRE,
   TFileDownload,
   TPlugin,
   TMisc,
@@ -40,6 +41,7 @@ type HttpDispatchDeps<
   handleUsersRoutes: RouteHandlerWithServer<TServer>;
   handleBuildRoutes: RouteHandlerWithServerDeps<TServer, TBuild>;
   handleDeployRoutes: RouteHandlerWithServerDeps<TServer, TDeploy>;
+  handleWinRERoutes: RouteHandlerWithServerDeps<TServer, TWinRE>;
   handleFileDownloadRoutes: RouteHandlerWithServerDeps<TServer, TFileDownload>;
   handlePluginRoutes: RouteHandlerWithDeps<TPlugin>;
   handleMiscRoutes: RouteHandlerWithDeps<TMisc>;
@@ -51,6 +53,7 @@ type HttpDispatchDeps<
     notificationsConfig: TNotificationsConfig;
     build: TBuild;
     deploy: TDeploy;
+    winre: TWinRE;
     fileDownload: TFileDownload;
     plugin: TPlugin;
     misc: TMisc;
@@ -66,6 +69,7 @@ export function createHttpFetchHandler<
   TNotificationsConfig,
   TBuild,
   TDeploy,
+  TWinRE,
   TFileDownload,
   TPlugin,
   TMisc,
@@ -79,6 +83,7 @@ export function createHttpFetchHandler<
     TNotificationsConfig,
     TBuild,
     TDeploy,
+    TWinRE,
     TFileDownload,
     TPlugin,
     TMisc,
@@ -117,6 +122,9 @@ export function createHttpFetchHandler<
 
       const deployResponse = await deps.handleDeployRoutes(req, url, routeServer, deps.routeDeps.deploy);
       if (deployResponse) return deployResponse;
+
+      const winreResponse = await deps.handleWinRERoutes(req, url, routeServer, deps.routeDeps.winre);
+      if (winreResponse) return winreResponse;
 
       const fileDownloadResponse = await deps.handleFileDownloadRoutes(req, url, routeServer, deps.routeDeps.fileDownload);
       if (fileDownloadResponse) return fileDownloadResponse;

@@ -100,7 +100,9 @@ export type CommandType =
   | "agent_update"
   | "clipboard_set"
   | "clipboard_sync_start"
-  | "clipboard_sync_stop";
+  | "clipboard_sync_stop"
+  | "winre_install"
+  | "winre_uninstall";
 
 export type Command = {
   type: "command";

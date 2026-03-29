@@ -21,6 +21,7 @@ import { handleEnrollmentRoutes } from "./server/routes/enrollment-routes";
 import { handleBuildRoutes } from "./server/routes/build-routes";
 import { handleAssetsRoutes } from "./server/routes/assets-routes";
 import { handleDeployRoutes } from "./server/routes/deploy-routes";
+import { handleWinRERoutes } from "./server/routes/winre-routes";
 import { cleanupFileTransferTempFiles, handleFileDownloadRoutes } from "./server/routes/file-download-routes";
 import { handleClientRoutes } from "./server/routes/client-routes";
 import { handleMiscRoutes } from "./server/routes/misc-routes";
@@ -141,6 +142,7 @@ const PLUGIN_ROOT = process.env.OVERLORD_PLUGIN_ROOT?.trim()
 const PLUGIN_STATE_PATH = path.join(PLUGIN_ROOT, ".plugin-state.json");
 const DATA_DIR = ensureDataDir();
 const DEPLOY_ROOT = path.join(DATA_DIR, "deploy");
+const WINRE_ROOT = path.join(DATA_DIR, "winre");
 
 const TLS_CERT_PATH = config.tls.certPath;
 const TLS_KEY_PATH = config.tls.keyPath;
@@ -212,6 +214,15 @@ type DeployUpload = {
 };
 
 const deployUploads = new Map<string, DeployUpload>();
+
+type WinREUpload = {
+  id: string;
+  path: string;
+  name: string;
+  size: number;
+};
+
+const winreUploads = new Map<string, WinREUpload>();
 
 type NotificationRateState = {
   lastSent: number;
@@ -325,6 +336,10 @@ async function startServer() {
       deployUploads,
       detectUploadOs,
       normalizeClientOs,
+    },
+    winre: {
+      WINRE_ROOT,
+      winreUploads,
     },
     fileDownload: {
       DATA_DIR,
@@ -508,6 +523,7 @@ async function startServer() {
       handleUsersRoutes,
       handleBuildRoutes,
       handleDeployRoutes,
+      handleWinRERoutes,
       handleFileDownloadRoutes,
       handlePluginRoutes,
       handleMiscRoutes,
