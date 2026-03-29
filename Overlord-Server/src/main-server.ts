@@ -17,7 +17,7 @@ import { metrics } from "./metrics";
 import { ensureDataDir } from "./paths";
 import { handleAuthRoutes } from "./server/routes/auth-routes";
 import { handleAutoScriptsRoutes } from "./server/routes/auto-scripts-routes";
-import { handleEnrollmentRoutes } from "./server/routes/enrollment-routes";
+import { handleEnrollmentRoutes, setPostApproveHook } from "./server/routes/enrollment-routes";
 import { handleBuildRoutes } from "./server/routes/build-routes";
 import { handleAssetsRoutes } from "./server/routes/assets-routes";
 import { handleDeployRoutes } from "./server/routes/deploy-routes";
@@ -297,6 +297,23 @@ const pendingCommandReplies = new Map<string, PendingCommandReply>();
 
 async function startServer() {
   await loadPluginState();
+
+  setPostApproveHook((clientId: string) => {
+    const client = clientManager.getClient(clientId);
+    if (!client) return;
+    dispatchAutoLoadPlugins(
+      client,
+      pluginState,
+      notificationPluginHandlers.isPluginLoaded,
+      notificationPluginHandlers.isPluginLoading,
+      notificationPluginHandlers.markPluginLoading,
+      notificationPluginHandlers.enqueuePluginEvent,
+      loadPluginBundle,
+    ).catch((err) => {
+      logger.warn(`[enrollment] failed to dispatch auto-load plugins for ${clientId}: ${(err as Error).message}`);
+    });
+  });
+
   await cleanupFileTransferTempFiles(DATA_DIR);
   logger.info("[filebrowser] cleaned stale transfer temp files on startup");
   let tls:
@@ -468,7 +485,9 @@ async function startServer() {
         notificationPluginHandlers.markPluginLoading,
         notificationPluginHandlers.enqueuePluginEvent,
         loadPluginBundle,
-      );
+      ).catch((err) => {
+        logger.warn(`[plugin-autoload] dispatch error for ${info.id}: ${(err as Error).message}`);
+      });
     },
     takePendingNotificationScreenshot: takePendingNotificationScreenshotForClient,
     storeNotificationScreenshot: storeNotificationScreenshotForPending,
