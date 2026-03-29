@@ -23,6 +23,7 @@ type HttpDispatchDeps<
   TNotificationsConfig,
   TBuild,
   TDeploy,
+  TAutoDeploy,
   TWinRE,
   TFileDownload,
   TPlugin,
@@ -37,6 +38,7 @@ type HttpDispatchDeps<
   handleAuthRoutes: RouteHandlerWithServer<TServer>;
   handleNotificationsConfigRoutes: RouteHandlerWithServerDeps<TServer, TNotificationsConfig>;
   handleAutoScriptsRoutes: RouteHandler;
+  handleAutoDeployRoutes: RouteHandlerWithDeps<TAutoDeploy>;
   handleEnrollmentRoutes: RouteHandler;
   handleUsersRoutes: RouteHandlerWithServer<TServer>;
   handleBuildRoutes: RouteHandlerWithServerDeps<TServer, TBuild>;
@@ -53,6 +55,7 @@ type HttpDispatchDeps<
     notificationsConfig: TNotificationsConfig;
     build: TBuild;
     deploy: TDeploy;
+    autoDeploy: TAutoDeploy;
     winre: TWinRE;
     fileDownload: TFileDownload;
     plugin: TPlugin;
@@ -69,6 +72,7 @@ export function createHttpFetchHandler<
   TNotificationsConfig,
   TBuild,
   TDeploy,
+  TAutoDeploy,
   TWinRE,
   TFileDownload,
   TPlugin,
@@ -83,6 +87,7 @@ export function createHttpFetchHandler<
     TNotificationsConfig,
     TBuild,
     TDeploy,
+    TAutoDeploy,
     TWinRE,
     TFileDownload,
     TPlugin,
@@ -110,6 +115,9 @@ export function createHttpFetchHandler<
 
       const autoScriptsResponse = await deps.handleAutoScriptsRoutes(req, url);
       if (autoScriptsResponse) return autoScriptsResponse;
+
+      const autoDeployResponse = await deps.handleAutoDeployRoutes(req, url, deps.routeDeps.autoDeploy);
+      if (autoDeployResponse) return autoDeployResponse;
 
       const enrollmentResponse = await deps.handleEnrollmentRoutes(req, url);
       if (enrollmentResponse) return enrollmentResponse;

@@ -655,6 +655,7 @@ export async function handleClientRoutes(
         } else if (action === "uninstall") {
           target.ws.send(encodeMessage({ type: "command", commandType: "uninstall", id: uuidv4() }));
           metrics.recordCommand("uninstall");
+          clientManager.deleteClient(targetId);
           deleteClientRow(targetId);
           logAudit({
             timestamp: Date.now(),
