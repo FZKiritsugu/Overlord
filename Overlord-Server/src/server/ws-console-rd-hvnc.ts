@@ -315,17 +315,24 @@ export function handleRemoteDesktopViewerMessage(ws: ServerWebSocket<SocketData>
         logger.debug(`[rd] ignoring duplicate desktop_start for client ${clientId}`);
       }
       break;
-    case "desktop_stop":
-      sendDesktopCommand(target, "desktop_stop", {});
-      if (state.isStreaming) {
-        state.isStreaming = false;
-        rdStreamingState.set(clientId, state);
-        logger.debug(`[rd] stopped streaming for client ${clientId}`);
+    case "desktop_stop": {
+      const otherViewers = sessionManager.getRdSessionsForClient(clientId)
+        .filter(s => s.id !== ws.data.sessionId);
+      if (otherViewers.length === 0) {
+        sendDesktopCommand(target, "desktop_stop", {});
+        if (state.isStreaming) {
+          state.isStreaming = false;
+          rdStreamingState.set(clientId, state);
+          logger.debug(`[rd] stopped streaming for client ${clientId}`);
+        } else {
+          rdStreamingState.set(clientId, { ...state, isStreaming: false });
+          logger.debug(`[rd] stop requested while not streaming for client ${clientId}`);
+        }
       } else {
-        rdStreamingState.set(clientId, { ...state, isStreaming: false });
-        logger.debug(`[rd] stop requested while not streaming for client ${clientId}`);
+        logger.debug(`[rd] ignoring desktop_stop for client ${clientId} - ${otherViewers.length} other viewer(s) still active`);
       }
       break;
+    }
     case "desktop_select_display": {
       const newDisplay = Number(payload.display) || 0;
       if (state.display !== newDisplay) {
