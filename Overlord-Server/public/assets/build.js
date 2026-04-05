@@ -363,6 +363,296 @@ if (iconClear) {
   });
 }
 
+function extractPEMetadata(buffer) {
+  const dv    = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+
+  const u8  = (o) => dv.getUint8(o);
+  const u16 = (o) => dv.getUint16(o, true);
+  const u32 = (o) => dv.getUint32(o, true);
+  const alignUp = (n) => (n + 3) & ~3;
+
+  if (buffer.byteLength < 0x40) throw new Error("File too small");
+  if (u16(0) !== 0x5A4D) throw new Error("Not a PE file (missing MZ header)");
+
+  const peOff = u32(0x3C);
+  if (peOff + 24 > buffer.byteLength) throw new Error("Invalid PE offset");
+  if (u32(peOff) !== 0x4550) throw new Error("Not a PE file (missing PE signature)");
+
+  const numSections  = u16(peOff + 6);
+  const optHdrSize   = u16(peOff + 20);
+  const optMagic     = u16(peOff + 24);
+  const is64         = optMagic === 0x20B; // PE32+ vs PE32
+
+  const dataDirsOff = peOff + 24 + (is64 ? 112 : 96);
+  const rsrcRVA     = u32(dataDirsOff + 2 * 8); // index 2 = IMAGE_DIRECTORY_ENTRY_RESOURCE
+  if (rsrcRVA === 0) throw new Error("No resource section RVA");
+
+  const secTableOff = peOff + 24 + optHdrSize;
+  let rsrcRaw = 0;
+  for (let i = 0; i < numSections; i++) {
+    const s   = secTableOff + i * 40;
+    const va  = u32(s + 12);
+    const vsz = Math.max(u32(s + 8), u32(s + 16));
+    const raw = u32(s + 20);
+    if (rsrcRVA >= va && rsrcRVA < va + vsz) {
+      rsrcRaw = raw + (rsrcRVA - va);
+      break;
+    }
+  }
+  if (!rsrcRaw) throw new Error("Could not locate resource section raw data");
+
+  const rvaToOff = (rva) => rsrcRaw + (rva - rsrcRVA);
+
+  function rsrcDir(dirOff) {
+    if (dirOff + 16 > buffer.byteLength) return [];
+    const numNamed = u16(dirOff + 12);
+    const numId    = u16(dirOff + 14);
+    const total    = numNamed + numId;
+    const entries  = [];
+    for (let i = 0; i < total; i++) {
+      const e        = dirOff + 16 + i * 8;
+      if (e + 8 > buffer.byteLength) break;
+      const nameOrId  = u32(e);
+      const dataOrDir = u32(e + 4);
+      entries.push({
+        id:       (nameOrId  & 0x80000000) ? null : nameOrId,
+        isSubDir: (dataOrDir & 0x80000000) !== 0,
+        off:       dataOrDir & 0x7FFFFFFF,
+      });
+    }
+    return entries;
+  }
+
+  const WANT = new Set([3, 14, 16]);
+  const resources = {};
+  for (const te of rsrcDir(rsrcRaw)) {
+    if (te.id === null || !WANT.has(te.id) || !te.isSubDir) continue;
+    resources[te.id] = {};
+    for (const ne of rsrcDir(rsrcRaw + te.off)) {
+      if (!ne.isSubDir) continue;
+      const nameId = ne.id ?? 1;
+      resources[te.id][nameId] = [];
+      for (const le of rsrcDir(rsrcRaw + ne.off)) {
+        if (le.isSubDir) continue;
+        const deOff = rsrcRaw + le.off;
+        if (deOff + 8 > buffer.byteLength) continue;
+        const dataRVA  = u32(deOff);
+        const dataSize = u32(deOff + 4);
+        const dataOff  = rvaToOff(dataRVA);
+        if (dataOff + dataSize <= buffer.byteLength)
+          resources[te.id][nameId].push({ dataOff, dataSize });
+      }
+    }
+  }
+
+  function parseVersionStrings(absOff, size) {
+    const strings = {};
+    const end = absOff + size;
+    let pos = absOff;
+    if (pos + 6 > end) return strings;
+
+    const viLen    = u16(pos);
+    const viValLen = u16(pos + 2);
+    pos += 6;
+
+    while (pos + 1 < end && (u8(pos) | u8(pos + 1))) pos += 2;
+    pos = alignUp(pos + 2);
+    pos += viValLen;
+    pos = alignUp(pos);
+
+    const viEnd = Math.min(absOff + viLen, end);
+    while (pos + 6 < viEnd) {
+      const childLen = u16(pos);
+      if (childLen < 6) break;
+      const childEnd = Math.min(pos + childLen, viEnd);
+
+      let kp = pos + 6;
+      let key = "";
+      while (kp + 1 < childEnd && (u8(kp) | u8(kp + 1))) {
+        key += String.fromCharCode(u8(kp) | (u8(kp + 1) << 8));
+        kp += 2;
+      }
+      kp = alignUp(kp + 2);
+
+      if (key === "StringFileInfo") {
+        let sp = kp;
+        while (sp + 6 < childEnd) {
+          const stLen = u16(sp);
+          if (stLen < 6) break;
+          const stEnd = Math.min(sp + stLen, childEnd);
+          let tp = sp + 6;
+          while (tp + 1 < stEnd && (u8(tp) | u8(tp + 1))) tp += 2;
+          tp = alignUp(tp + 2);
+
+          while (tp + 6 < stEnd) {
+            const sLen    = u16(tp);
+            if (sLen < 6) break;
+            const sEnd    = Math.min(tp + sLen, stEnd);
+            const sValLen = u16(tp + 2);
+            let np = tp + 6;
+            let name = "";
+            while (np + 1 < sEnd && (u8(np) | u8(np + 1))) {
+              name += String.fromCharCode(u8(np) | (u8(np + 1) << 8));
+              np += 2;
+            }
+            np = alignUp(np + 2);
+            let val = "";
+            const valEnd = Math.min(np + sValLen * 2, sEnd);
+            while (np + 1 < valEnd && (u8(np) | u8(np + 1))) {
+              val += String.fromCharCode(u8(np) | (u8(np + 1) << 8));
+              np += 2;
+            }
+            if (name) strings[name] = val;
+            tp = alignUp(sEnd);
+          }
+          sp = alignUp(stEnd);
+        }
+      }
+      pos = alignUp(childEnd);
+    }
+    return strings;
+  }
+
+  function buildIco(groupOff, iconRes) {
+    if (groupOff + 6 > buffer.byteLength) return null;
+    const count = u16(groupOff + 4);
+    if (count === 0 || groupOff + 6 + count * 14 > buffer.byteLength) return null;
+
+    const grpEntries = [];
+    for (let i = 0; i < count; i++) {
+      const e = groupOff + 6 + i * 14;
+      grpEntries.push({
+        w: u8(e), h: u8(e + 1), cc: u8(e + 2),
+        planes: u16(e + 4), bits: u16(e + 6),
+        size: u32(e + 8), id: u16(e + 12),
+      });
+    }
+
+    const iconData = [];
+    for (const en of grpEntries) {
+      const rd = iconRes[en.id];
+      if (!rd || rd.length === 0) continue;
+      iconData.push({ en, dataOff: rd[0].dataOff, dataSize: rd[0].dataSize });
+    }
+    if (iconData.length === 0) return null;
+
+    let totalSize = 6 + iconData.length * 16;
+    for (const id of iconData) totalSize += id.dataSize;
+
+    const ico = new Uint8Array(totalSize);
+    const idv = new DataView(ico.buffer);
+    let p = 0;
+
+    idv.setUint16(p, 0, true); p += 2; // reserved
+    idv.setUint16(p, 1, true); p += 2; // type = ICO
+    idv.setUint16(p, iconData.length, true); p += 2;
+
+    let dataOffset = 6 + iconData.length * 16;
+    const entryStart = p;
+    let ep = entryStart;
+    p += iconData.length * 16;
+
+    for (const { en, dataOff, dataSize } of iconData) {
+      ico[ep]   = en.w;
+      ico[ep+1] = en.h;
+      ico[ep+2] = en.cc;
+      ico[ep+3] = 0;
+      idv.setUint16(ep + 4,  en.planes,  true);
+      idv.setUint16(ep + 6,  en.bits,    true);
+      idv.setUint32(ep + 8,  dataSize,   true);
+      idv.setUint32(ep + 12, dataOffset, true);
+      ep += 16;
+
+      ico.set(bytes.subarray(dataOff, dataOff + dataSize), dataOffset);
+      dataOffset += dataSize;
+    }
+
+    let bin = "";
+    for (let i = 0; i < ico.length; i++) bin += String.fromCharCode(ico[i]);
+    return btoa(bin);
+  }
+
+  const result = {};
+
+  if (resources[16]) {
+    const vd = Object.values(resources[16]).flat()[0];
+    if (vd) {
+      try { result.strings = parseVersionStrings(vd.dataOff, vd.dataSize); } catch (_) {}
+    }
+  }
+
+  if (resources[14] && resources[3]) {
+    const gd = Object.values(resources[14]).flat()[0];
+    if (gd) {
+      try { result.iconBase64 = buildIco(gd.dataOff, resources[3]); } catch (_) {}
+    }
+  }
+
+  return result;
+}
+
+const cloneExeUpload = document.getElementById("clone-exe-upload");
+const cloneExeLabel  = document.getElementById("clone-exe-label");
+const cloneExeStatus = document.getElementById("clone-exe-status");
+
+function setCloneStatus(msg, isError) {
+  if (!cloneExeStatus) return;
+  cloneExeStatus.textContent = msg;
+  cloneExeStatus.className   = "text-xs " + (isError ? "text-red-400" : "text-emerald-400");
+  cloneExeStatus.classList.remove("hidden");
+}
+
+if (cloneExeUpload) {
+  cloneExeUpload.addEventListener("change", () => {
+    const file = cloneExeUpload.files[0];
+    if (!file) return;
+
+    if (cloneExeLabel) cloneExeLabel.textContent = file.name;
+    setCloneStatus("Parsing...", false);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const meta = extractPEMetadata(reader.result);
+        const s    = meta.strings || {};
+
+        const fields = [
+          ["assembly-title",     s["FileDescription"]  ?? s["InternalName"] ?? ""],
+          ["assembly-product",   s["ProductName"]       ?? ""],
+          ["assembly-company",   s["CompanyName"]       ?? ""],
+          ["assembly-version",   s["FileVersion"]?.replace(/,\s*/g, ".") ?? s["ProductVersion"]?.replace(/,\s*/g, ".") ?? ""],
+          ["assembly-copyright", s["LegalCopyright"]    ?? s["LegalTrademarks"] ?? ""],
+        ];
+
+        let filled = 0;
+        for (const [id, val] of fields) {
+          const el = document.getElementById(id);
+          if (el && val) { el.value = val; filled++; }
+        }
+
+        if (meta.iconBase64) {
+          const decodedBytes = Math.floor(meta.iconBase64.length * 3 / 4);
+          if (decodedBytes <= 1024 * 1024) {
+            pendingIconBase64 = meta.iconBase64;
+            if (iconLabel) iconLabel.textContent = file.name + " (cloned icon)";
+            if (iconClear)  iconClear.classList.remove("hidden");
+            setCloneStatus(`Cloned ${filled} metadata field(s) + icon`, false);
+          } else {
+            setCloneStatus(`Cloned ${filled} metadata field(s) (icon too large, skipped)`, false);
+          }
+        } else {
+          setCloneStatus(filled > 0 ? `Cloned ${filled} metadata field(s), no icon found` : "No metadata found in file", !filled);
+        }
+      } catch (err) {
+        setCloneStatus("Error: " + err.message, true);
+      }
+      cloneExeUpload.value = "";
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 const MAX_BIND_FILES = 5;
 const MAX_BIND_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
