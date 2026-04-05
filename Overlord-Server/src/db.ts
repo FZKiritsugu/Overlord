@@ -56,6 +56,9 @@ try {
   db.run(`ALTER TABLE clients ADD COLUMN enrollment_status TEXT NOT NULL DEFAULT 'pending'`);
 } catch {}
 try {
+  db.run(`UPDATE clients SET enrollment_status='pending' WHERE enrollment_status IS NULL`);
+} catch {}
+try {
   db.run(`ALTER TABLE clients ADD COLUMN public_key TEXT`);
 } catch {}
 try {
@@ -469,8 +472,12 @@ export function listClients(filters: ListFilters): ListResult {
   }
 
   if (enrollmentFilter && enrollmentFilter !== "all") {
-    where.push("enrollment_status=?");
-    params.push(enrollmentFilter);
+    if (enrollmentFilter === "pending") {
+      where.push("(enrollment_status='pending' OR enrollment_status IS NULL)");
+    } else {
+      where.push("enrollment_status=?");
+      params.push(enrollmentFilter);
+    }
   }
 
   if (osFilter && osFilter !== "all") {
@@ -1089,7 +1096,7 @@ export function getPendingClients(): {
   return db
     .query<any>(
       `SELECT id, host, os, user, ip, country, public_key as publicKey, key_fingerprint as keyFingerprint, last_seen as lastSeen
-       FROM clients WHERE enrollment_status='pending' ORDER BY last_seen DESC`,
+       FROM clients WHERE enrollment_status='pending' OR enrollment_status IS NULL ORDER BY last_seen DESC`,
     )
     .all()
     .map((r: any) => ({
